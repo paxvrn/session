@@ -36,25 +36,9 @@
             background-color: #3B82F6;
             color: white;
         }
-        .modal {
-            background-color: rgba(0, 0, 0, 0.7);
-        }
-        .modal-content {
-            background-color: #1E1E1E;
-            border: 1px solid #333;
-        }
-        .modal-button {
+        .library-button.selected {
             background-color: #3B82F6;
             color: white;
-        }
-        .modal-button:hover {
-            background-color: #2563EB;
-        }
-        .close-button {
-            color: #888;
-        }
-        .close-button:hover {
-            color: #E0E0E0;
         }
     </style>
 </head>
@@ -160,7 +144,7 @@
             🎲 Pick Random Device
         </button>
         
-        <!-- Library Selection and Confirmation Section -->
+        <!-- Library Selection Section -->
         <div id="library-section" class="hidden">
             <h2 class="text-xl font-semibold mb-2">Choose a Library:</h2>
             <div class="flex flex-col space-y-4">
@@ -168,11 +152,12 @@
                 <button class="library-button p-3 rounded-xl font-semibold" data-library="Telethon">Telethon</button>
             </div>
 
+            <!-- Confirmation and Send Button -->
             <div class="mt-8">
                 <h2 class="text-xl font-semibold mb-2">Current Selection:</h2>
                 <div id="selection-summary" class="display-box p-4 rounded-xl text-left">
-                    <p>Device: <span id="confirm-device" class="font-mono ml-2 text-gray-400"></span></p>
-                    <p>Library: <span id="confirm-library" class="font-mono ml-2 text-gray-400"></span></p>
+                    <p>Device: <span id="confirm-device" class="font-mono ml-2 text-gray-400">None</span></p>
+                    <p>Library: <span id="confirm-library" class="font-mono ml-2 text-gray-400">None</span></p>
                 </div>
                 <button id="send-button" class="w-full p-3 font-semibold rounded-xl mt-4 bg-blue-500 hover:bg-blue-600 transition-colors hidden">
                     Send to Bot
@@ -209,11 +194,9 @@
             }
 
             if (selectedDevice && selectedLibrary) {
-                WebApp.MainButton.hide();
                 sendButton.classList.remove('hidden');
                 confirmLibrarySpan.textContent = selectedLibrary;
             } else {
-                WebApp.MainButton.hide();
                 sendButton.classList.add('hidden');
                 confirmLibrarySpan.textContent = 'None';
             }
@@ -223,6 +206,7 @@
         deviceSelect.addEventListener('change', (event) => {
             selectedDevice = event.target.value;
             selectedLibrary = null; // Reset library selection
+            libraryButtons.forEach(btn => btn.classList.remove('selected'));
             updateUI();
         });
 
@@ -233,6 +217,7 @@
                 selectedDevice = deviceList[randomIndex];
                 deviceSelect.value = selectedDevice;
                 selectedLibrary = null; // Reset library selection
+                libraryButtons.forEach(btn => btn.classList.remove('selected'));
                 updateUI();
             }
         });
@@ -241,10 +226,10 @@
         libraryButtons.forEach(button => {
             button.addEventListener('click', () => {
                 // Remove highlight from all buttons
-                libraryButtons.forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
+                libraryButtons.forEach(btn => btn.classList.remove('selected'));
                 
                 // Highlight the selected button
-                button.classList.add('bg-blue-500', 'text-white');
+                button.classList.add('selected');
                 
                 selectedLibrary = button.dataset.library;
                 updateUI();
