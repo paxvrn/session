@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Device Selector</title>
+    <!-- Telegram Web App script -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+        }
+        select, button, #selected-device-display {
+            background-color: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color);
+            border-color: var(--tg-theme-link-color);
+        }
+        button:hover {
+            background-color: var(--tg-theme-accent-color);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="p-8 rounded-2xl w-full max-w-sm text-center">
+        <h1 class="text-3xl font-bold mb-6">Device Selector</h1>
+        
+        <p class="mb-6">
+            Choose a device from the list or pick a random one. The selected option will be sent back to the bot.
+        </p>
+
+        <div class="flex flex-col space-y-4 md:space-y-0 md:flex-row md:space-x-4 mb-6">
+            <select id="device-select" class="flex-1 p-3 rounded-xl border focus:outline-none focus:ring-2 transition-colors duration-200 cursor-pointer">
+                <option value="" disabled selected>Select a device...</option>
+                <option value="Pyrogram">Pyrogram</option>
+                <option value="Telethon">Telethon</option>
+                <option value="Pyrogram-asyncio">Pyrogram (asyncio)</option>
+                <option value="Telethon-asyncio">Telethon (asyncio)</option>
+                <option value="Custom Device">Custom Device</option>
+            </select>
+            
+            <button id="random-button" class="p-3 font-semibold rounded-xl transition-colors duration-200 flex-shrink-0">
+                Random Device
+            </button>
+        </div>
+
+        <div class="mt-8">
+            <h2 class="text-xl font-semibold mb-2">Selected Device:</h2>
+            <div id="selected-device-display" class="p-4 rounded-xl border text-center font-mono text-lg min-h-[56px] flex items-center justify-center">
+                None
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WebApp = Telegram.WebApp;
+        WebApp.ready();
+
+        // Get elements
+        const deviceSelect = document.getElementById('device-select');
+        const randomButton = document.getElementById('random-button');
+        const selectedDeviceDisplay = document.getElementById('selected-device-display');
+
+        const devices = ["Pyrogram", "Telethon", "Pyrogram-asyncio", "Telethon-asyncio", "Custom Device"];
+
+        // Set up the main button
+        WebApp.MainButton.setText('Send Selected Device').show();
+
+        // Event listener for the dropdown menu
+        deviceSelect.addEventListener('change', (event) => {
+            const selectedValue = event.target.value;
+            if (selectedValue) {
+                selectedDeviceDisplay.textContent = selectedValue;
+            } else {
+                selectedDeviceDisplay.textContent = "None";
+            }
+        });
+
+        // Event listener for the random device button
+        randomButton.addEventListener('click', () => {
+            const randomIndex = Math.floor(Math.random() * devices.length);
+            const randomDevice = devices[randomIndex];
+            
+            deviceSelect.value = randomDevice;
+            selectedDeviceDisplay.textContent = randomDevice;
+        });
+
+        // Event listener for the native Telegram Main Button
+        WebApp.onEvent('mainButtonClicked', () => {
+            const selectedDevice = selectedDeviceDisplay.textContent;
+            if (selectedDevice && selectedDevice !== "None") {
+                // Send the selected device back to the bot
+                WebApp.sendData(selectedDevice);
+            } else {
+                // Show a simple pop-up or a warning
+                WebApp.showAlert('Please select a device first.');
+            }
+        });
+    </script>
+</body>
+</html>
+
