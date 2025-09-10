@@ -27,7 +27,7 @@ if not BOT_TOKEN:
 
 app = Client(
     "device_selector_bot",
-    api_id=int(os.getenv("API_ID", 12345)),  # Dummy values for bot to start
+    api_id=int(os.getenv("API_ID", 12345)),
     api_hash=os.getenv("API_HASH", "dummy_hash"),
     bot_token=BOT_TOKEN,
     parse_mode=ParseMode.MARKDOWN
@@ -85,22 +85,21 @@ async def web_app_data_handler(client, message):
                 f"To generate the session string, tap on the `🔑 {library} Session` button."
             )
 
-@app.on_message(filters.command(["generate_pyrogram_session", "generate_telethon_session"]))
-async def start_interactive_session_generation(client, message, library_name=None):
+async def start_interactive_session_generation(client, message, library_name):
     """
     Starts an interactive flow to generate a session string.
     """
     chat_id = message.chat.id
-    client_type = library_name or message.command[0].split("_")[1]
 
     await app.send_message(
         chat_id,
-        f"**{client_type.capitalize()} Session Generation Started.**\n\n"
+        f"**{library_name.capitalize()} Session Generation Started.**\n\n"
         "Please enter your API ID:"
     )
-    user_sessions[chat_id] = {"client_type": client_type, "step": "api_id"}
+    user_sessions[chat_id] = {"client_type": library_name, "step": "api_id"}
 
-@app.on_message(filters.text & ~filters.command(["start"]) & filters.private)
+
+@app.on_message(filters.private & filters.text & ~filters.command("start"))
 async def interactive_login_handler(client, message):
     """
     Handles the interactive steps for session generation.
