@@ -1,0 +1,3 @@
+pyrogram
+telethon[full]
+asyncio
