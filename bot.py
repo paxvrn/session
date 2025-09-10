@@ -57,7 +57,7 @@ async def start_command(client, message):
 
     # Check if the URL is valid before creating the button
     try:
-        mini_app_button = [InlineKeyboardButton(text="✨ Open Mini App", web_app=WebAppInfo(url=MINI_APP_URL))]
+        mini_app_button_list = [[InlineKeyboardButton(text="✨ Open Mini App", web_app=WebAppInfo(url=MINI_APP_URL))]]
     except Exception as e:
         print(f"Error creating Mini App button: {e}")
         await message.reply_text(
@@ -65,7 +65,7 @@ async def start_command(client, message):
         )
         return
     
-    reply_markup = InlineKeyboardMarkup(keyboard_buttons + mini_app_button)
+    reply_markup = InlineKeyboardMarkup(keyboard_buttons + mini_app_button_list)
 
     await message.reply_text(
         "Hello! Please select a device or open the Mini App.\n\n"
