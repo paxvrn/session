@@ -3,7 +3,8 @@
 
 import os
 import random
-from pyrogram import Client, filters, idle
+import asyncio
+from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from pyrogram.enums import ParseMode
 from telethon import TelegramClient
@@ -108,10 +109,10 @@ async def generate_pyrogram_session_command(client, message):
             api_hash=API_HASH,
             in_memory=True
         )
-
-        await session_client.connect()
-        session_string = await session_client.export_session_string()
-        await session_client.disconnect()
+        
+        # Connect the client and export the session string
+        async with session_client:
+            session_string = await session_client.export_session_string()
         
         await app.send_message(
             chat_id,
@@ -189,5 +190,5 @@ async def generate_telethon_session_command(client, message):
 
 # Main entry point to start the bot
 if __name__ == "__main__":
-    print("Bot is starting...")
+    # Start the bot as a Web Service on Render.
     app.run()
