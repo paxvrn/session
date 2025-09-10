@@ -1,5 +1,5 @@
 TgCrypto
-pyrogram
-telethon
+pyrogram==2.0.106
+telethon==1.41.2
 asyncio
-python-dotenv
+python-dotenv==1.1.1
