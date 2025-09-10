@@ -1,5 +1,4 @@
-# This bot provides a mini app, inline keyboard options, and interactive
-# session generators for both Pyrogram and Telethon.
+# This bot provides a mini app and interactive session generators for Pyrogram and Telethon.
 
 import os
 import random
@@ -13,36 +12,29 @@ from pyrogram.enums import ParseMode
 from telethon import TelegramClient
 
 # --- CONFIGURATION ---
-# It is highly recommended to use environment variables for your credentials in production.
-# Use the python-dotenv library for local development to load these from a .env file.
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
 
-API_ID = os.getenv("API_ID")
-API_HASH = os.getenv("API_HASH")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://your-hosted-domain.com/mini_app.html")
 
-# Check if credentials are set
-if not all([API_ID, API_HASH, BOT_TOKEN]):
-    print("Error: Please set API_ID, API_HASH, and BOT_TOKEN environment variables.")
+if not BOT_TOKEN:
+    print("Error: Please set BOT_TOKEN environment variable.")
     exit(1)
 
-# List of available libraries for session generation
-LIBRARIES = ["Pyrogram", "Telethon"]
-DEVICE_OPTIONS = ["Pyrogram", "Telethon", "Pyrogram-asyncio", "Telethon-asyncio", "Custom Device"]
-
-# Initialize the Pyrogram client
 app = Client(
     "device_selector_bot",
-    api_id=int(API_ID),
-    api_hash=API_HASH,
+    api_id=int(os.getenv("API_ID", 12345)),  # Dummy values for bot to start
+    api_hash=os.getenv("API_HASH", "dummy_hash"),
     bot_token=BOT_TOKEN,
     parse_mode=ParseMode.MARKDOWN
 )
+
+# A simple in-memory state to track interactive login sessions
+user_sessions = {}
 
 # --- COMMAND AND HANDLERS ---
 
@@ -52,44 +44,30 @@ async def start_command(client, message):
     Handles the /start command.
     Sends a message with both inline keyboard options and a Mini App button.
     """
-    keyboard_buttons = [[InlineKeyboardButton(text=device, callback_data=device)] for device in DEVICE_OPTIONS]
-    keyboard_buttons.append([InlineKeyboardButton(text="🎲 Random Device", callback_data="random")])
+    keyboard_buttons = [
+        [InlineKeyboardButton(text="✨ Open Mini App", web_app=WebAppInfo(url=MINI_APP_URL))],
+        [
+            InlineKeyboardButton(text="🔑 Pyrogram Session", callback_data="pyrogram_session"),
+            InlineKeyboardButton(text="🔑 Telethon Session", callback_data="telethon_session")
+        ]
+    ]
 
-    # Check if the URL is valid before creating the button
-    try:
-        mini_app_button_list = [[InlineKeyboardButton(text="✨ Open Mini App", web_app=WebAppInfo(url=MINI_APP_URL))]]
-    except Exception as e:
-        print(f"Error creating Mini App button: {e}")
-        await message.reply_text(
-            "❌ There was an error with the Mini App URL. Please check your BotFather configuration."
-        )
-        return
-    
-    reply_markup = InlineKeyboardMarkup(keyboard_buttons + mini_app_button_list)
+    reply_markup = InlineKeyboardMarkup(keyboard_buttons)
 
     await message.reply_text(
-        "Hello! Please select a device or open the Mini App.\n\n"
-        "You can also use these commands to generate a session string:\n"
-        "• `/generate_pyrogram_session`\n"
-        "• `/generate_telethon_session`",
+        "Hello! Choose an option below to start generating a session string.",
         reply_markup=reply_markup
     )
 
-@app.on_callback_query()
-async def callback_handler(client, callback_query):
-    """
-    Handles button presses from the inline keyboard.
-    """
-    query_data = callback_query.data
-    
-    if query_data == "random":
-        selected_device = random.choice(DEVICE_OPTIONS)
-    else:
-        selected_device = query_data
-    
-    await callback_query.edit_message_text(
-        f"✅ You have selected: **{selected_device}**"
-    )
+@app.on_callback_query(filters.regex("pyrogram_session"))
+async def pyrogram_session_callback(client, callback_query):
+    await callback_query.answer("Starting Pyrogram session generation...", show_alert=False)
+    await start_interactive_session_generation(client, callback_query.message, "pyrogram")
+
+@app.on_callback_query(filters.regex("telethon_session"))
+async def telethon_session_callback(client, callback_query):
+    await callback_query.answer("Starting Telethon session generation...", show_alert=False)
+    await start_interactive_session_generation(client, callback_query.message, "telethon")
 
 @app.on_message(filters.text & filters.private)
 async def web_app_data_handler(client, message):
@@ -98,118 +76,128 @@ async def web_app_data_handler(client, message):
     """
     if message.web_app_data:
         data = json.loads(message.web_app_data.data)
-        selected_device = data.get("device")
-        selected_library = data.get("library")
+        device = data.get("device")
+        library = data.get("library")
 
-        if selected_device and selected_library:
+        if device and library:
             await message.reply_text(
-                f"✅ You have selected the device **{selected_device}** with the library **{selected_library}**.\n\n"
-                "Now, use the corresponding command to generate your session string:\n"
-                f"• `/generate_{selected_library.lower()}_session`"
-            )
-        else:
-            await message.reply_text(
-                "❌ An error occurred with your selection. Please try again."
+                f"✅ You have selected the device **{device}** and the library **{library}**.\n"
+                f"To generate the session string, tap on the `🔑 {library} Session` button."
             )
 
-@app.on_message(filters.command("generate_pyrogram_session"))
-async def generate_pyrogram_session_command(client, message):
+@app.on_message(filters.command(["generate_pyrogram_session", "generate_telethon_session"]))
+async def start_interactive_session_generation(client, message, library_name=None):
     """
-    Starts an interactive flow to generate a Pyrogram session string.
-    """
-    chat_id = message.chat.id
-    try:
-        await app.send_message(
-            chat_id,
-            "**Pyrogram Session Generation Started.**\n\n"
-            "Please follow the instructions in the chat. The process will be interactive.\n\n"
-            "**Warning:** Never share your session string. It gives full control over your account."
-        )
-
-        session_client = Client(
-            name="session_generator",
-            api_id=int(API_ID),
-            api_hash=API_HASH,
-            in_memory=True
-        )
-        
-        # Connect the client and export the session string
-        async with session_client:
-            session_string = await session_client.export_session_string()
-        
-        await app.send_message(
-            chat_id,
-            "**✅ Pyrogram Session String Generated!**\n\n"
-            f"```\n{session_string}\n```\n\n"
-            "This string is only for you. Use it to log in to Pyrogram-based apps.",
-            parse_mode=ParseMode.MARKDOWN
-        )
-
-    except Exception as e:
-        print(f"Error during Pyrogram session generation: {e}")
-        await app.send_message(
-            chat_id,
-            f"❌ An error occurred during session generation. Please try again later."
-        )
-
-@app.on_message(filters.command("generate_telethon_session"))
-async def generate_telethon_session_command(client, message):
-    """
-    Starts an interactive flow to generate a Telethon session string.
+    Starts an interactive flow to generate a session string.
     """
     chat_id = message.chat.id
+    client_type = library_name or message.command[0].split("_")[1]
+
+    await app.send_message(
+        chat_id,
+        f"**{client_type.capitalize()} Session Generation Started.**\n\n"
+        "Please enter your API ID:"
+    )
+    user_sessions[chat_id] = {"client_type": client_type, "step": "api_id"}
+
+@app.on_message(filters.text & ~filters.command(["start"]) & filters.private)
+async def interactive_login_handler(client, message):
+    """
+    Handles the interactive steps for session generation.
+    """
+    chat_id = message.chat.id
+    user_state = user_sessions.get(chat_id)
+
+    if not user_state:
+        return
+
+    client_type = user_state["client_type"]
+    step = user_state["step"]
+
     try:
-        await app.send_message(
-            chat_id,
-            "**Telethon Session Generation Started.**\n\n"
-            "Please enter your phone number with country code (e.g., `+11234567890`):"
-        )
+        if step == "api_id":
+            user_state["api_id"] = message.text.strip()
+            await message.reply_text("Please enter your API Hash:")
+            user_state["step"] = "api_hash"
+        
+        elif step == "api_hash":
+            user_state["api_hash"] = message.text.strip()
+            await message.reply_text("Please enter your phone number with country code (e.g., `+11234567890`):")
+            user_state["step"] = "phone_number"
 
-        # Wait for the user's phone number
-        phone_number_message = await app.wait_for_message(chat_id)
-        phone_number = phone_number_message.text.strip()
+        elif step == "phone_number":
+            phone_number = message.text.strip()
+            user_state["phone_number"] = phone_number
+            
+            if client_type == "pyrogram":
+                session_client = Client(
+                    name=str(chat_id),
+                    api_id=int(user_state["api_id"]),
+                    api_hash=user_state["api_hash"],
+                    in_memory=True,
+                )
+                await session_client.connect()
+                code = await session_client.send_code(phone_number)
+                user_state["session_client"] = session_client
+                user_state["phone_code_hash"] = code.phone_code_hash
+                await message.reply_text("Please enter the login code you received:")
+                user_state["step"] = "login_code"
+            
+            elif client_type == "telethon":
+                session_client = TelegramClient(str(chat_id), int(user_state["api_id"]), user_state["api_hash"])
+                await session_client.connect()
+                await session_client.send_code_request(phone_number)
+                user_state["session_client"] = session_client
+                await message.reply_text("Please enter the login code you received:")
+                user_state["step"] = "login_code"
         
-        session_client = TelegramClient('telethon_session', int(API_ID), API_HASH)
-
-        await session_client.connect()
+        elif step == "login_code":
+            code = message.text.strip()
+            session_client = user_state["session_client"]
+            
+            if client_type == "pyrogram":
+                phone_number = user_state["phone_number"]
+                phone_code_hash = user_state["phone_code_hash"]
+                await session_client.sign_in(phone_number, phone_code_hash, code)
+                session_string = await session_client.export_session_string()
+                await message.reply_text(f"✅ Pyrogram Session String:\n`{session_string}`")
+                del user_sessions[chat_id]
+                await session_client.disconnect()
+            elif client_type == "telethon":
+                phone_number = user_state["phone_number"]
+                try:
+                    await session_client.sign_in(phone_number, code)
+                    session_string = session_client.session.save()
+                    await message.reply_text(f"✅ Telethon Session String:\n`{session_string}`")
+                    del user_sessions[chat_id]
+                    await session_client.disconnect()
+                except Exception as e:
+                    if "Password required" in str(e):
+                        await message.reply_text("Please enter your 2FA password:")
+                        user_state["step"] = "2fa_password"
+                    else:
+                        await message.reply_text(f"❌ Login failed: {e}. Please try again.")
+                        del user_sessions[chat_id]
+                        await session_client.disconnect()
         
-        # Send a login code and prompt the user
-        await session_client.send_code_request(phone_number)
-        await app.send_message(chat_id, "Please enter the login code you received:")
-        
-        # Wait for the login code
-        code_message = await app.wait_for_message(chat_id)
-        code = code_message.text.strip()
-        
-        try:
-            # Try to sign in with the code
-            await session_client.sign_in(phone_number, code)
-        except Exception as e:
-            if "Password required" in str(e):
-                await app.send_message(chat_id, "Please enter your Two-Factor Authentication password:")
-                password_message = await app.wait_for_message(chat_id)
-                password = password_message.text.strip()
+        elif step == "2fa_password":
+            password = message.text.strip()
+            session_client = user_state["session_client"]
+            phone_number = user_state["phone_number"]
+            try:
                 await session_client.sign_in(phone_number, password=password)
-            else:
-                raise e # Re-raise if it's an unexpected error
-
-        session_string = session_client.session.save()
-        await session_client.disconnect()
-
-        await app.send_message(
-            chat_id,
-            "**✅ Telethon Session String Generated!**\n\n"
-            f"```\n{session_string}\n```\n\n"
-            "This string is only for you. Use it to log in to Telethon-based apps.",
-            parse_mode=ParseMode.MARKDOWN
-        )
+                session_string = session_client.session.save()
+                await message.reply_text(f"✅ Telethon Session String:\n`{session_string}`")
+            except Exception as e:
+                await message.reply_text(f"❌ 2FA login failed: {e}. Please try again.")
+            finally:
+                del user_sessions[chat_id]
+                await session_client.disconnect()
 
     except Exception as e:
-        print(f"Error during Telethon session generation: {e}")
-        await app.send_message(
-            chat_id,
-            f"❌ An error occurred during session generation: {e}. Please try again later."
-        )
+        if chat_id in user_sessions:
+            del user_sessions[chat_id]
+        await message.reply_text(f"❌ An unexpected error occurred: {e}. Please start over.")
 
 # Simple handler to satisfy Render's port requirement
 class HealthCheckHandler(BaseHTTPRequestHandler):
@@ -220,16 +208,13 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.wfile.write(b"Bot is running.")
 
 def start_http_server():
-    server_address = ('0.0.0.0', int(os.environ.get('PORT', 8080)))
+    port = int(os.environ.get('PORT', 8080))
+    server_address = ('0.0.0.0', port)
     httpd = HTTPServer(server_address, HealthCheckHandler)
     httpd.serve_forever()
 
-# Main entry point to start the bot
 if __name__ == "__main__":
-    # Start the HTTP server in a separate thread
     http_thread = threading.Thread(target=start_http_server)
     http_thread.daemon = True
     http_thread.start()
-
-    # Start the bot as a Web Service on Render.
     app.run()
