@@ -81,25 +81,26 @@ async def callback_handler(client, callback_query):
         f"✅ You have selected: **{selected_device}**"
     )
 
-@app.on_message(filters.web_app_data)
+@app.on_message(filters.text & filters.private)
 async def web_app_data_handler(client, message):
     """
     Handles data sent from the Telegram Mini App.
     """
-    data = json.loads(message.web_app_data.data)
-    selected_device = data.get("device")
-    selected_library = data.get("library")
+    if message.web_app_data:
+        data = json.loads(message.web_app_data.data)
+        selected_device = data.get("device")
+        selected_library = data.get("library")
 
-    if selected_device and selected_library:
-        await message.reply_text(
-            f"✅ You have selected the device **{selected_device}** with the library **{selected_library}**.\n\n"
-            "Now, use the corresponding command to generate your session string:\n"
-            f"• `/generate_{selected_library.lower()}_session`"
-        )
-    else:
-        await message.reply_text(
-            "❌ An error occurred with your selection. Please try again."
-        )
+        if selected_device and selected_library:
+            await message.reply_text(
+                f"✅ You have selected the device **{selected_device}** with the library **{selected_library}**.\n\n"
+                "Now, use the corresponding command to generate your session string:\n"
+                f"• `/generate_{selected_library.lower()}_session`"
+            )
+        else:
+            await message.reply_text(
+                "❌ An error occurred with your selection. Please try again."
+            )
 
 @app.on_message(filters.command("generate_pyrogram_session"))
 async def generate_pyrogram_session_command(client, message):
