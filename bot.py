@@ -28,8 +28,9 @@ if not all([API_ID, API_HASH, BOT_TOKEN]):
     print("Error: Please set API_ID, API_HASH, and BOT_TOKEN environment variables.")
     exit(1)
 
-# List of available devices
-DEVICES = ["Pyrogram", "Telethon", "Pyrogram-asyncio", "Telethon-asyncio", "Custom Device"]
+# List of available libraries for session generation
+LIBRARIES = ["Pyrogram", "Telethon"]
+DEVICE_OPTIONS = ["Pyrogram", "Telethon", "Pyrogram-asyncio", "Telethon-asyncio", "Custom Device"]
 
 # Initialize the Pyrogram client
 app = Client(
@@ -48,7 +49,7 @@ async def start_command(client, message):
     Handles the /start command.
     Sends a message with both inline keyboard options and a Mini App button.
     """
-    keyboard_buttons = [[InlineKeyboardButton(text=device, callback_data=device)] for device in DEVICES]
+    keyboard_buttons = [[InlineKeyboardButton(text=device, callback_data=device)] for device in DEVICE_OPTIONS]
     keyboard_buttons.append([InlineKeyboardButton(text="🎲 Random Device", callback_data="random")])
 
     mini_app_button = [InlineKeyboardButton(text="✨ Open Mini App", web_app=WebAppInfo(url=MINI_APP_URL))]
@@ -71,7 +72,7 @@ async def callback_handler(client, callback_query):
     query_data = callback_query.data
     
     if query_data == "random":
-        selected_device = random.choice(DEVICES)
+        selected_device = random.choice(DEVICE_OPTIONS)
     else:
         selected_device = query_data
     
@@ -86,7 +87,10 @@ async def web_app_data_handler(client, message):
     """
     selected_device = message.web_app_data.data
     await message.reply_text(
-        f"✅ Your Mini App selection: **{selected_device}**"
+        f"✅ You have selected the device: **{selected_device}**\n\n"
+        "Now, choose a library to generate a session string for this device:\n"
+        "• `/generate_pyrogram_session`\n"
+        "• `/generate_telethon_session`"
     )
 
 @app.on_message(filters.command("generate_pyrogram_session"))
