@@ -1,3 +1,4 @@
 pyrogram
 telethon[full]
 asyncio
+python-dotenv
