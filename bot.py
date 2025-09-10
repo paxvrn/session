@@ -5,6 +5,8 @@ import os
 import random
 import asyncio
 import json
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from pyrogram.enums import ParseMode
@@ -53,9 +55,17 @@ async def start_command(client, message):
     keyboard_buttons = [[InlineKeyboardButton(text=device, callback_data=device)] for device in DEVICE_OPTIONS]
     keyboard_buttons.append([InlineKeyboardButton(text="🎲 Random Device", callback_data="random")])
 
-    mini_app_button = [InlineKeyboardButton(text="✨ Open Mini App", web_app=WebAppInfo(url=MINI_APP_URL))]
+    # Check if the URL is valid before creating the button
+    try:
+        mini_app_button = [InlineKeyboardButton(text="✨ Open Mini App", web_app=WebAppInfo(url=MINI_APP_URL))]
+    except Exception as e:
+        print(f"Error creating Mini App button: {e}")
+        await message.reply_text(
+            "❌ There was an error with the Mini App URL. Please check your BotFather configuration."
+        )
+        return
     
-    reply_markup = InlineKeyboardMarkup(keyboard_buttons + [mini_app_button])
+    reply_markup = InlineKeyboardMarkup(keyboard_buttons + mini_app_button)
 
     await message.reply_text(
         "Hello! Please select a device or open the Mini App.\n\n"
@@ -201,7 +211,25 @@ async def generate_telethon_session_command(client, message):
             f"❌ An error occurred during session generation: {e}. Please try again later."
         )
 
+# Simple handler to satisfy Render's port requirement
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(b"Bot is running.")
+
+def start_http_server():
+    server_address = ('0.0.0.0', int(os.environ.get('PORT', 8080)))
+    httpd = HTTPServer(server_address, HealthCheckHandler)
+    httpd.serve_forever()
+
 # Main entry point to start the bot
 if __name__ == "__main__":
+    # Start the HTTP server in a separate thread
+    http_thread = threading.Thread(target=start_http_server)
+    http_thread.daemon = True
+    http_thread.start()
+
     # Start the bot as a Web Service on Render.
     app.run()
