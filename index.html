@@ -140,7 +140,6 @@
                     <option value="ZTE Nubia RedMagic 8S Pro">ZTE Nubia RedMagic 8S Pro</option>
                 </select>
             </div>
-
             <button id="random-button" class="w-full p-3 font-semibold rounded-xl mb-6">
                 🎲 Pick Random Device
             </button>
@@ -148,16 +147,14 @@
                 Continue
             </button>
         </div>
-
-        <!-- Library Selection Section -->
+        
         <div id="step-2" class="hidden">
             <h2 class="text-xl font-semibold mb-2">Choose a Library:</h2>
             <div class="flex flex-col space-y-4">
                 <button class="library-button p-3 rounded-xl font-semibold" data-library="Pyrogram">Pyrogram</button>
                 <button class="library-button p-3 rounded-xl font-semibold" data-library="Telethon">Telethon</button>
             </div>
-
-            <!-- Confirmation and Send Button -->
+        
             <div class="mt-8">
                 <h2 class="text-xl font-semibold mb-2">Current Selection:</h2>
                 <div id="selection-summary" class="display-box p-4 rounded-xl text-left">
@@ -170,7 +167,6 @@
             </div>
         </div>
     </div>
-
     <script>
         const WebApp = Telegram.WebApp;
         WebApp.ready();
@@ -191,75 +187,53 @@
         const deviceList = Array.from(deviceSelect.options).map(option => option.value).filter(value => value !== "");
 
         const updateUI = () => {
-            if (selectedDevice) {
-                continueButton.disabled = false;
-                continueButton.classList.remove('hidden');
-            } else {
-                continueButton.disabled = true;
-                continueButton.classList.add('hidden');
-            }
+            continueButton.disabled = !selectedDevice;
+            confirmDeviceSpan.textContent = selectedDevice || 'None';
+            confirmLibrarySpan.textContent = selectedLibrary || 'None';
 
             if (selectedDevice && selectedLibrary) {
                 sendButton.classList.remove('hidden');
-                confirmDeviceSpan.textContent = selectedDevice;
-                confirmLibrarySpan.textContent = selectedLibrary;
             } else {
                 sendButton.classList.add('hidden');
-                confirmLibrarySpan.textContent = 'None';
             }
         };
 
-        // Event listener for the dropdown menu
         deviceSelect.addEventListener('change', (event) => {
             selectedDevice = event.target.value;
             updateUI();
         });
 
-        // Event listener for the random device button
         randomButton.addEventListener('click', () => {
-            if (deviceList.length > 0) {
-                const randomIndex = Math.floor(Math.random() * deviceList.length);
-                selectedDevice = deviceList[randomIndex];
-                deviceSelect.value = selectedDevice;
-                updateUI();
-            }
+            const randomIndex = Math.floor(Math.random() * deviceList.length);
+            selectedDevice = deviceList[randomIndex];
+            deviceSelect.value = selectedDevice;
+            updateUI();
         });
 
-        // Event listener for the continue button
         continueButton.addEventListener('click', () => {
             if (selectedDevice) {
                 deviceSection.classList.add('hidden');
                 librarySection.classList.remove('hidden');
-                confirmDeviceSpan.textContent = selectedDevice;
             }
         });
 
-        // Event listeners for library buttons
         libraryButtons.forEach(button => {
             button.addEventListener('click', () => {
-                // Remove highlight from all buttons
                 libraryButtons.forEach(btn => btn.classList.remove('selected'));
-                
-                // Highlight the selected button
                 button.classList.add('selected');
-                
                 selectedLibrary = button.dataset.library;
                 updateUI();
             });
         });
 
-        // Event listener for the send button
         sendButton.addEventListener('click', () => {
-            const data = {
-                device: selectedDevice,
-                library: selectedLibrary
-            };
-            WebApp.sendData(JSON.stringify(data));
+            if (selectedDevice && selectedLibrary) {
+                WebApp.sendData(JSON.stringify({
+                    device: selectedDevice,
+                    library: selectedLibrary
+                }));
+            }
         });
-
-        // Initial UI state
-        updateUI();
-
     </script>
 </body>
 </html>
