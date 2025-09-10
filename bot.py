@@ -4,6 +4,7 @@
 import os
 import random
 import asyncio
+import json
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from pyrogram.enums import ParseMode
@@ -85,13 +86,20 @@ async def web_app_data_handler(client, message):
     """
     Handles data sent from the Telegram Mini App.
     """
-    selected_device = message.web_app_data.data
-    await message.reply_text(
-        f"✅ You have selected the device: **{selected_device}**\n\n"
-        "Now, choose a library to generate a session string for this device:\n"
-        "• `/generate_pyrogram_session`\n"
-        "• `/generate_telethon_session`"
-    )
+    data = json.loads(message.web_app_data.data)
+    selected_device = data.get("device")
+    selected_library = data.get("library")
+
+    if selected_device and selected_library:
+        await message.reply_text(
+            f"✅ You have selected the device **{selected_device}** with the library **{selected_library}**.\n\n"
+            "Now, use the corresponding command to generate your session string:\n"
+            f"• `/generate_{selected_library.lower()}_session`"
+        )
+    else:
+        await message.reply_text(
+            "❌ An error occurred with your selection. Please try again."
+        )
 
 @app.on_message(filters.command("generate_pyrogram_session"))
 async def generate_pyrogram_session_command(client, message):
