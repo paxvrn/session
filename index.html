@@ -3,37 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Device Selector</title>
+    <title>Device Selector</title>
     <!-- Telegram Web App script -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--tg-theme-bg-color);
-            color: var(--tg-theme-text-color);
+            background-color: #121212;
+            color: #E0E0E0;
+            transition: background-color 0.3s, color 0.3s;
         }
-        select, button, #selected-device-display {
-            background-color: var(--tg-theme-secondary-bg-color);
-            color: var(--tg-theme-text-color);
-            border-color: var(--tg-theme-link-color);
+        .container {
+            background-color: #1E1E1E;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+        }
+        select, button, .display-box {
+            background-color: #2D2D2D;
+            border: 1px solid #444;
+            color: #E0E0E0;
+            transition: all 0.2s ease-in-out;
+        }
+        select:focus, button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5);
+            border-color: #3B82F6;
         }
         button:hover {
-            background-color: var(--tg-theme-accent-color);
+            background-color: #3B82F6;
+            color: white;
+        }
+        .modal {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        .modal-content {
+            background-color: #1E1E1E;
+            border: 1px solid #333;
+        }
+        .modal-button {
+            background-color: #3B82F6;
+            color: white;
+        }
+        .modal-button:hover {
+            background-color: #2563EB;
+        }
+        .close-button {
+            color: #888;
+        }
+        .close-button:hover {
+            color: #E0E0E0;
         }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
-    <div class="p-8 rounded-2xl w-full max-w-sm text-center">
-        <h1 class="text-3xl font-bold mb-6">Device Selector</h1>
+
+    <!-- Main Application Container -->
+    <div class="container p-8 rounded-2xl w-full max-w-sm text-center">
+        <h1 class="text-3xl font-bold mb-4 text-white">Device Selector</h1>
         
-        <p class="mb-6">
-            Choose a device from the list or pick a random one. The selected option will be sent back to the bot.
+        <p class="mb-6 text-sm text-gray-400">
+            Choose a device from the list or pick a random one to generate a session string.
         </p>
 
-        <div class="flex flex-col space-y-4 md:space-y-0 md:flex-row md:space-x-4 mb-6">
-            <select id="device-select" class="flex-1 p-3 rounded-xl border focus:outline-none focus:ring-2 transition-colors duration-200 cursor-pointer">
+        <!-- Device Selection Dropdown -->
+        <div class="mb-6">
+            <select id="device-select" class="w-full p-3 rounded-xl focus:ring-2 cursor-pointer appearance-none">
                 <option value="" disabled selected>Select a device...</option>
                 <option value="Amazon Fire HD 10">Amazon Fire HD 10</option>
                 <option value="Amazon Fire HD 8">Amazon Fire HD 8</option>
@@ -117,16 +154,29 @@
                 <option value="ZTE Axon 40 Ultra">ZTE Axon 40 Ultra</option>
                 <option value="ZTE Nubia RedMagic 8S Pro">ZTE Nubia RedMagic 8S Pro</option>
             </select>
-            
-            <button id="random-button" class="p-3 font-semibold rounded-xl transition-colors duration-200 flex-shrink-0">
-                Random Device
-            </button>
         </div>
 
-        <div class="mt-8">
-            <h2 class="text-xl font-semibold mb-2">Selected Device:</h2>
-            <div id="selected-device-display" class="p-4 rounded-xl border text-center font-mono text-lg min-h-[56px] flex items-center justify-center">
-                None
+        <button id="random-button" class="w-full p-3 font-semibold rounded-xl mb-6">
+            🎲 Pick Random Device
+        </button>
+        
+        <!-- Library Selection and Confirmation Section -->
+        <div id="library-section" class="hidden">
+            <h2 class="text-xl font-semibold mb-2">Choose a Library:</h2>
+            <div class="flex flex-col space-y-4">
+                <button class="library-button p-3 rounded-xl font-semibold" data-library="Pyrogram">Pyrogram</button>
+                <button class="library-button p-3 rounded-xl font-semibold" data-library="Telethon">Telethon</button>
+            </div>
+
+            <div class="mt-8">
+                <h2 class="text-xl font-semibold mb-2">Current Selection:</h2>
+                <div id="selection-summary" class="display-box p-4 rounded-xl text-left">
+                    <p>Device: <span id="confirm-device" class="font-mono ml-2 text-gray-400"></span></p>
+                    <p>Library: <span id="confirm-library" class="font-mono ml-2 text-gray-400"></span></p>
+                </div>
+                <button id="send-button" class="w-full p-3 font-semibold rounded-xl mt-4 bg-blue-500 hover:bg-blue-600 transition-colors hidden">
+                    Send to Bot
+                </button>
             </div>
         </div>
     </div>
@@ -137,144 +187,82 @@
 
         const deviceSelect = document.getElementById('device-select');
         const randomButton = document.getElementById('random-button');
-        const selectedDeviceDisplay = document.getElementById('selected-device-display');
+        const librarySection = document.getElementById('library-section');
+        const confirmDeviceSpan = document.getElementById('confirm-device');
+        const confirmLibrarySpan = document.getElementById('confirm-library');
+        const sendButton = document.getElementById('send-button');
+        const libraryButtons = document.querySelectorAll('.library-button');
+        
+        let selectedDevice = null;
+        let selectedLibrary = null;
 
         const deviceList = Array.from(deviceSelect.options).map(option => option.value).filter(value => value !== "");
 
-        WebApp.MainButton.setText('Send Selected Device').show();
-
-        deviceSelect.addEventListener('change', (event) => {
-            const selectedValue = event.target.value;
-            if (selectedValue) {
-                selectedDeviceDisplay.textContent = selectedValue;
+        const updateUI = () => {
+            if (selectedDevice) {
+                // Show the library selection section
+                librarySection.classList.remove('hidden');
+                confirmDeviceSpan.textContent = selectedDevice;
             } else {
-                selectedDeviceDisplay.textContent = "None";
+                // Hide the library selection section
+                librarySection.classList.add('hidden');
             }
-        });
 
-        randomButton.addEventListener('click', () => {
-            if (deviceList.length > 0) {
-                const randomIndex = Math.floor(Math.random() * deviceList.length);
-                const randomDevice = deviceList[randomIndex];
-                
-                deviceSelect.value = randomDevice;
-                selectedDeviceDisplay.textContent = randomDevice;
-            }
-        });
-
-        WebApp.onEvent('mainButtonClicked', () => {
-            const selectedDevice = selectedDeviceDisplay.textContent;
-            if (selectedDevice && selectedDevice !== "None") {
-                WebApp.sendData(selectedDevice);
+            if (selectedDevice && selectedLibrary) {
+                WebApp.MainButton.hide();
+                sendButton.classList.remove('hidden');
+                confirmLibrarySpan.textContent = selectedLibrary;
             } else {
-                WebApp.showAlert('Please select a device first.');
+                WebApp.MainButton.hide();
+                sendButton.classList.add('hidden');
+                confirmLibrarySpan.textContent = 'None';
             }
-        });
-    </script>
-</body>
-</html>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Device Selector</title>
-    <!-- Telegram Web App script -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--tg-theme-bg-color);
-            color: var(--tg-theme-text-color);
-        }
-        select, button, #selected-device-display {
-            background-color: var(--tg-theme-secondary-bg-color);
-            color: var(--tg-theme-text-color);
-            border-color: var(--tg-theme-link-color);
-        }
-        button:hover {
-            background-color: var(--tg-theme-accent-color);
-        }
-    </style>
-</head>
-<body class="flex items-center justify-center min-h-screen p-4">
-    <div class="p-8 rounded-2xl w-full max-w-sm text-center">
-        <h1 class="text-3xl font-bold mb-6">Device Selector</h1>
-        
-        <p class="mb-6">
-            Choose a device from the list or pick a random one. The selected option will be sent back to the bot.
-        </p>
-
-        <div class="flex flex-col space-y-4 md:space-y-0 md:flex-row md:space-x-4 mb-6">
-            <select id="device-select" class="flex-1 p-3 rounded-xl border focus:outline-none focus:ring-2 transition-colors duration-200 cursor-pointer">
-                <option value="" disabled selected>Select a device...</option>
-                <option value="Pyrogram">Pyrogram</option>
-                <option value="Telethon">Telethon</option>
-                <option value="Pyrogram-asyncio">Pyrogram (asyncio)</option>
-                <option value="Telethon-asyncio">Telethon (asyncio)</option>
-                <option value="Custom Device">Custom Device</option>
-            </select>
-            
-            <button id="random-button" class="p-3 font-semibold rounded-xl transition-colors duration-200 flex-shrink-0">
-                Random Device
-            </button>
-        </div>
-
-        <div class="mt-8">
-            <h2 class="text-xl font-semibold mb-2">Selected Device:</h2>
-            <div id="selected-device-display" class="p-4 rounded-xl border text-center font-mono text-lg min-h-[56px] flex items-center justify-center">
-                None
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const WebApp = Telegram.WebApp;
-        WebApp.ready();
-
-        // Get elements
-        const deviceSelect = document.getElementById('device-select');
-        const randomButton = document.getElementById('random-button');
-        const selectedDeviceDisplay = document.getElementById('selected-device-display');
-
-        const devices = ["Pyrogram", "Telethon", "Pyrogram-asyncio", "Telethon-asyncio", "Custom Device"];
-
-        // Set up the main button
-        WebApp.MainButton.setText('Send Selected Device').show();
+        };
 
         // Event listener for the dropdown menu
         deviceSelect.addEventListener('change', (event) => {
-            const selectedValue = event.target.value;
-            if (selectedValue) {
-                selectedDeviceDisplay.textContent = selectedValue;
-            } else {
-                selectedDeviceDisplay.textContent = "None";
-            }
+            selectedDevice = event.target.value;
+            selectedLibrary = null; // Reset library selection
+            updateUI();
         });
 
         // Event listener for the random device button
         randomButton.addEventListener('click', () => {
-            const randomIndex = Math.floor(Math.random() * devices.length);
-            const randomDevice = devices[randomIndex];
-            
-            deviceSelect.value = randomDevice;
-            selectedDeviceDisplay.textContent = randomDevice;
-        });
-
-        // Event listener for the native Telegram Main Button
-        WebApp.onEvent('mainButtonClicked', () => {
-            const selectedDevice = selectedDeviceDisplay.textContent;
-            if (selectedDevice && selectedDevice !== "None") {
-                // Send the selected device back to the bot
-                WebApp.sendData(selectedDevice);
-            } else {
-                // Show a simple pop-up or a warning
-                WebApp.showAlert('Please select a device first.');
+            if (deviceList.length > 0) {
+                const randomIndex = Math.floor(Math.random() * deviceList.length);
+                selectedDevice = deviceList[randomIndex];
+                deviceSelect.value = selectedDevice;
+                selectedLibrary = null; // Reset library selection
+                updateUI();
             }
         });
+
+        // Event listeners for library buttons
+        libraryButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove highlight from all buttons
+                libraryButtons.forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
+                
+                // Highlight the selected button
+                button.classList.add('bg-blue-500', 'text-white');
+                
+                selectedLibrary = button.dataset.library;
+                updateUI();
+            });
+        });
+
+        // Event listener for the send button
+        sendButton.addEventListener('click', () => {
+            const data = {
+                device: selectedDevice,
+                library: selectedLibrary
+            };
+            WebApp.sendData(JSON.stringify(data));
+        });
+
+        // Initial UI state
+        updateUI();
+
     </script>
 </body>
 </html>
